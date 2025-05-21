@@ -135,7 +135,7 @@
                         {{ entry[5] }}
                         {% endif %}
                     </td>
-                    <td>{{ entry[10] or '' }}</td>
+                    <td>{{ entry[15] or '' }}</td>
                     <td>{{ entry[7] or '' }}</td>
                     <td>{{ entry[2][5:16] if entry[2] else '' }}</td>
                     <td {% if entry[6]==session['username'] %} class="table-success" {% endif %}>{{ entry[6] or '' }}</td>

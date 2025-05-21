@@ -25,8 +25,8 @@ If you are interested in creating your own university news group to help more st
     * Set the `app.secret_key` in your application configuration.
     * Define your `EDITOR_LIST` and `ADMIN_LIST` to specify user roles.
     * Configure the parameters for `app.run` within the `if __name__ == '__main__':` block to suit your server's web environment.
-    * Download the Typst binary from the [official Typst repository](https://github.com/typst/typst) and place it in the project's root directory (or ensure it's accessible via your system's PATH).
-    * Create an `archived` folder in the project's root directory (this is likely used for storing published or processed items).
+    * Download the Typst binary from the [official Typst repository](https://github.com/typst/typst) and place it in the project's root directory.
+    * Directly run `python3 main.py` is not recommended by flask. You can refer to related tutorial for better way to deploy.
 
 Once these steps are completed, the application should be ready to run.
 

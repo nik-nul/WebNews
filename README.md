@@ -54,7 +54,6 @@ The general workflow involves recruiting members, gathering information, and uti
     * **Deadlines:** For events with a deadline, use the "Deadline" option. Enter a concise title for display in the Deadline Table and specify the deadline date.
     * **Conciseness:** Write brief summaries. The original source link will be automatically included, allowing readers to get the gist. Full details can be accessed via the hyperlink or QR code (if provided with the source).
     * **Tagging:** Utilize tags to categorize entries. University-wide events, often being high priority, might be displayed more prominently. Proper categorization enhances the newsletter's organization, especially with numerous items.
-    * **Publication Section:** (Note: This feature is mentioned as "currently not enabled" in the original text. If it becomes active, its description would go here.)
     * **Editing Lock:** To prevent conflicts, an item is locked for 15 minutes when a user begins editing. The lock is released upon submission or cancellation. If the timer expires, the item may become available to others. Avoid keeping items open for long periods without active editing.
 
 4.  **Reviewing:**

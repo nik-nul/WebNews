@@ -952,6 +952,7 @@ def publish():
             subprocess.run(["./typst", "compile", "--font-path", "/home/nik_nul/font", "news_template.typ", "./static/latest.pdf"], check=True)
         except subprocess.CalledProcessError:
            flash("Compilation failed. Please check typst installation and source file.")
+        return render_template("publish.html", content=new_content)
     else:
         content = ""
         if os.path.exists("latest.json"):

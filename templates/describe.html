@@ -60,7 +60,7 @@
                         </div>
                         <div id="shortTitleField"{% if entry[8] %}style="display:block;" {% else %}style="display:none;" {% endif%}>
                             <label>短标题（将显示在ddl表格）</label>
-                            <input type="text" name="short_title" class="form-control" value="{{ entry[15] if entry[15] else entry[3] }}">
+                            <input type="text" name="short_title" class="form-control">
                         </div>
                     </div>
                     <div class="form-group">
@@ -141,6 +141,9 @@
                 var today = new Date().toISOString().split('T')[0];
                 dueInput.value = today;
             }
+            var titleInput = document.querySelector('input[name="title"]');
+            var shortTitleInput = document.querySelector('input[name="short_title"]');
+            shortTitleInput.value = titleInput.value;
         } else {
             deadlineDiv.style.display = 'none';
             if (shortTitleDiv) shortTitleDiv.style.display = 'none';

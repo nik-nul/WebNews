@@ -695,7 +695,7 @@ def typst_pub(date):
     }
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
-    c.execute("SELECT title, link, tag, due_time, publish_date, short_title, type, id FROM entries WHERE due_time IS NOT NULL AND due_time > ? AND publish_date <= ? ORDER BY due_time ASC", (date, date))
+    c.execute("SELECT title, link, tag, due_time, publish_date, short_title, type, id FROM entries WHERE due_time IS NOT NULL AND due_time > ? AND DATE(publish_date) <= ? AND publish_date >= '2023-01-01' ORDER BY due_time ASC", (date, date))
     due_entries = c.fetchall()
     conn.close()
     other_due, college_due, club_due, lecture_due  = [], [], [], []

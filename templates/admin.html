@@ -30,6 +30,7 @@
             <button type="button" id="selectAllBtn" class="btn btn-secondary mb-3 ms-2">全选</button>
             <button type="button" id="selectUnpublishedBtn" class="btn btn-info mb-3 ms-2">选择未发布条目</button>
             <button type="button" class="btn btn-warning mb-3" onclick="unpublishSelected()">取消发布选定条目</button>
+            <button type="button" class="btn btn-danger mb-3" onclick="makeInvalidSelected()">标记为无效</button>
         </form>
 
         <form id="publishTodayForm" action="{{ url_for('admin_publish_today') }}" method="POST">
@@ -171,6 +172,31 @@
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = '{{ url_for("admin_unpublish") }}';
+                
+                checkboxes.forEach(checkbox => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'entry_ids';
+                    input.value = checkbox.value;
+                    form.appendChild(input);
+                });
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        function makeInvalidSelected() {
+            const checkboxes = document.querySelectorAll('input[name="entry_ids"]:checked');
+            if (checkboxes.length === 0) {
+                alert('请至少选择一个条目');
+                return;
+            }
+            
+            if (confirm('确定要将选定的条目标记为无效吗？这将设置发布时间为1970-01-01。')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '{{ url_for("admin_make_invalid") }}';
                 
                 checkboxes.forEach(checkbox => {
                     const input = document.createElement('input');

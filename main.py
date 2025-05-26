@@ -579,6 +579,22 @@ def admin_publish_today():
     flash("今天上传的条目的发布时间已更新")
     return redirect(url_for('admin'))
 
+@app.route('/admin/unpublish', methods=['POST'])
+@editor_required
+def admin_unpublish():
+    entry_ids = request.form.getlist("entry_ids")
+    if not entry_ids:
+        flash("请至少选择一个条目")
+        return redirect(url_for('admin'))
+    conn = sqlite3.connect('database.db')
+    c = conn.cursor()
+    for eid in entry_ids:
+        c.execute("UPDATE entries SET publish_date=NULL WHERE id=?", (eid,))
+    conn.commit()
+    conn.close()
+    flash("选定条目已取消发布")
+    return redirect(url_for('admin'))
+
 @app.route('/admin/user_admin', methods=['GET'])
 @admin_required
 def user_admin():

@@ -12,10 +12,18 @@ from urllib.parse import urlparse
 import re
 import json
 import subprocess
+import email.message
+import smtplib
+import time
 
 app = Flask(__name__)
 app.secret_key = 'A_SECRET_KEY_HERE'
 app.permanent_session_lifetime = timedelta(days=7)
+
+EMAIL_ADDRESS = "test@smail.nju.edu.cn"
+EMAIL_PASSWORD = "A_SECRET_KEY_HERE"
+SMTP_SERVER = "smtp.exmail.qq.com"
+SMTP_PORT = 465
 
 
 def fetch_title(url):
@@ -993,6 +1001,181 @@ def publish():
             with open("latest.json", "r") as f:
                 content = f.read()
         return render_template("publish.html", content=content)
+
+def read_mailing_list():
+    try:
+        with open('mailinglist', 'r') as f:
+            emails = [line.strip() for line in f.readlines() if line.strip()]
+            return emails
+    except FileNotFoundError:
+        return []
+
+def generate_news_html(date):
+    news_data = typst(date)
+    
+    toc_html = "<h2>目录</h2><ul>"
+    toc_counter = 0
+    
+    sections = {
+        'other': '校级活动',
+        'lecture': '讲座',
+        'college': '院级活动', 
+        'club': '社团活动'
+    }
+    
+    for section_key, section_title in sections.items():
+        has_news = section_key in news_data['data'] and news_data['data'][section_key]
+        has_due = section_key in news_data['due'] and news_data['due'][section_key]
+        
+        if has_news or has_due:
+            toc_counter += 1
+            section_id = f"section-{toc_counter}"
+            toc_html += f'<li><a href="#{section_id}">{section_title}</a>'
+            
+            if has_news:
+                toc_html += '<ul>'
+                for i, item in enumerate(news_data['data'][section_key]):
+                    item_id = f"{section_id}-item-{i+1}"
+                    toc_html += f'<li><a href="#{item_id}">{item["title"]}</a></li>'
+                toc_html += '</ul>'
+            
+            toc_html += '</li>'
+    
+    toc_html += "</ul><hr>"
+    
+    html_content = f"""
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            body {{ font-family: Arial, sans-serif; margin: 20px; }}
+            h1 {{ color: #333; }}
+            h2 {{ color: #666; border-bottom: 2px solid #ddd; padding-bottom: 5px; }}
+            h3 {{ color: #888; margin-top: 15px; margin-bottom: 10px; }}
+            ul {{ padding-left: 20px; }}
+            li {{ margin-bottom: 10px; }}
+            a {{ color: #0066cc; text-decoration: none; }}
+            a:hover {{ text-decoration: underline; }}
+            .section {{ margin-bottom: 30px; }}
+            .due-section {{ margin-bottom: 25px; }}
+            table {{ border-collapse: collapse; width: 100%; margin-top: 10px; margin-bottom: 15px; }}
+            th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
+            th {{ background-color: #f2f2f2; }}
+            .toc {{ background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin-bottom: 20px; }}
+            .toc ul {{ margin-bottom: 0; }}
+        </style>
+    </head>
+    <body>
+        <h1>南哪消息 {date}</h1>
+        <div class="toc">
+            {toc_html}
+        </div>
+    """
+    
+    toc_counter = 0
+    for section_key, section_title in sections.items():
+        has_news = section_key in news_data['data'] and news_data['data'][section_key]
+        has_due = section_key in news_data['due'] and news_data['due'][section_key]
+        
+        if has_news or has_due:
+            toc_counter += 1
+            section_id = f"section-{toc_counter}"
+            html_content += f'<div class="section"><h2 id="{section_id}">{section_title}</h2>'
+            
+            if has_due:
+                html_content += '<table><thead><tr><th>活动标题</th><th>截止时间</th><th>刊载时间</th></tr></thead><tbody>'
+                
+                for item in news_data['due'][section_key]:
+                    link_html = f'<a href="{item["link"]}" target="_blank">{item["title"]}</a>' if item.get('link') else item['title']
+                    due_time = item['due_time'][:10] if len(item['due_time']) >= 10 else item['due_time']
+                    publish_time = item['publish_date'][:10] if item.get('publish_date') and len(item['publish_date']) >= 10 else item.get('publish_date', '')
+                    html_content += f'<tr><td>{link_html}</td><td>{due_time}</td><td>{publish_time}</td></tr>'
+                
+                html_content += '</tbody></table>'
+            
+            if has_news:
+                html_content += '<ul>'
+                
+                for i, item in enumerate(news_data['data'][section_key]):
+                    item_id = f"{section_id}-item-{i+1}"
+                    html_content += f'<li><h3 id="{item_id}">{item["title"]}</h3>'
+                    
+                    if item.get('link'):
+                        html_content += f'原文链接： <a href="{item["link"]}" target="_blank">{item["link"]}</a>'
+                    
+                    if item.get('description'):
+                        desc_html = ""
+                        for desc_part in item['description']:
+                            if desc_part['type'] == 'text':
+                                desc_html += desc_part['content'].replace('\n', '<br>')
+                            elif desc_part['type'] == 'link':
+                                desc_html += f' <a href="{desc_part["content"]}" target="_blank">{desc_part["content"]}</a>'
+                        html_content += f'<br>{desc_html}'
+                    
+                    html_content += '</li>'
+                
+                html_content += '</ul>'
+            
+            html_content += '</div>'
+    
+    html_content += """
+        <hr>
+        <p>南哪小报编辑部<br>{}</p>
+        <hr>
+    </body>
+    </html>
+    """.format(date)
+    
+    return html_content
+
+def send_news_email(date, recipient_list=None):
+    if recipient_list is None:
+        recipient_list = read_mailing_list()
+    
+    if not recipient_list:
+        return False, "邮件列表为空"
+    
+    html_content = generate_news_html(date)
+    
+    msg = email.message.EmailMessage()
+    msg["Subject"] = f"南哪消息 {date}"
+    msg["From"] = "南哪小报编辑部 <231220103@smail.nju.edu.cn>"
+    msg["Bcc"] = ", ".join(recipient_list)
+    msg.set_content(html_content, subtype="html")
+    
+    for attempt in range(5):
+        try:
+            with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
+                server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+                server.send_message(msg)
+            return True, f"邮件发送成功，发送给 {len(recipient_list)} 个收件人"
+        except Exception as e:
+            if attempt == 4:
+                return False, f"邮件发送失败: {str(e)}"
+            time.sleep(1)
+    
+    return False, "邮件发送失败"
+
+@app.route('/send_email', methods=['GET', 'POST'])
+@admin_required
+def send_email():
+    if request.method == 'POST':
+        date = request.form.get('date')
+        if not date:
+            flash("请选择日期")
+            return redirect(url_for('send_email'))
+        
+        success, message = send_news_email(date)
+        flash(message)
+        
+        if success:
+            return redirect(url_for('send_email'))
+        else:
+            return redirect(url_for('send_email'))
+    
+    today = datetime.now().strftime("%Y-%m-%d")
+    mailing_list = read_mailing_list()
+    return render_template('send_email.html', today=today, mailing_list=mailing_list)
 
 if __name__ == '__main__':
     # app.run(host="localhost", debug=True, port=45251)

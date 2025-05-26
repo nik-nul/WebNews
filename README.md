@@ -86,7 +86,7 @@ The general workflow involves recruiting members, gathering information, and uti
 This website is currently under active development. Planned features include:
 
 -   [ ] Deployment to GitHub Pages
--   [ ] Email delivery system
+-   [x]  Email delivery system ([#15](https://github.com/nik-nul/WebNews/pull/15))
 -   [ ] RSS feed service
 
 PRs are welcome! To avoid duplicate work, please open a draft pull request or an issue to discuss any new features you'd like to contribute before starting development.

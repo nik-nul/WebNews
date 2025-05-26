@@ -595,6 +595,23 @@ def admin_unpublish():
     flash("选定条目已取消发布")
     return redirect(url_for('admin'))
 
+@app.route('/admin/make_invalid', methods=['POST'])
+@editor_required
+def admin_make_invalid():
+    entry_ids = request.form.getlist("entry_ids")
+    if not entry_ids:
+        flash("请至少选择一个条目")
+        return redirect(url_for('admin'))
+    invalid_date = datetime(1970, 1, 1)
+    conn = sqlite3.connect('database.db')
+    c = conn.cursor()
+    for eid in entry_ids:
+        c.execute("UPDATE entries SET publish_date=? WHERE id=?", (invalid_date, eid))
+    conn.commit()
+    conn.close()
+    flash("选定条目已标记为无效")
+    return redirect(url_for('admin'))
+
 @app.route('/admin/user_admin', methods=['GET'])
 @admin_required
 def user_admin():

@@ -675,9 +675,7 @@ def search():
 
     return render_template('search.html', query=query, results=results, page=page, total_pages=total_pages)
 
-@app.route('/typst/<date>')
-# @login_required
-def typst_pub(date):
+def typst(date):
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
     today_str = datetime.now().strftime("%Y-%m-%d")
@@ -752,9 +750,12 @@ def typst_pub(date):
         "other": other_due
     }
 
-    res = {"data": data, "due": due}
+    return {"data": data, "due": due}
 
-    return json.dumps(res, ensure_ascii=False, indent=2), 200, {'Content-Type': 'application/json; charset=utf-8'}
+@app.route('/typst/<date>')
+# @login_required
+def typst_pub(date):
+    return json.dumps(typst(date), ensure_ascii=False, indent=2), 200, {'Content-Type': 'application/json; charset=utf-8'}
 
 @app.route("/preview_edit")
 def preview_edit():

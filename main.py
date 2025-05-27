@@ -1047,23 +1047,9 @@ def generate_news_html(date):
     <html>
     <head>
         <meta charset="UTF-8">
-        <style>
-            body {{ font-family: Arial, sans-serif; margin: 20px; }}
-            h1 {{ color: #333; }}
-            h2 {{ color: #666; border-bottom: 2px solid #ddd; padding-bottom: 5px; }}
-            h3 {{ color: #888; margin-top: 15px; margin-bottom: 10px; }}
-            ul {{ padding-left: 20px; }}
-            li {{ margin-bottom: 10px; }}
-            a {{ color: #0066cc; text-decoration: none; }}
-            a:hover {{ text-decoration: underline; }}
-            .section {{ margin-bottom: 30px; }}
-            .due-section {{ margin-bottom: 25px; }}
-            table {{ border-collapse: collapse; width: 100%; margin-top: 10px; margin-bottom: 15px; }}
-            th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-            th {{ background-color: #f2f2f2; }}
-            .toc {{ background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin-bottom: 20px; }}
-            .toc ul {{ margin-bottom: 0; }}
-        </style>
+        <link rel="preload" href="https://nik-nul.github.io/css/news.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+        <noscript><link rel="stylesheet" href="https://nik-nul.github.io/css/news.css"></noscript>
+        <title>南哪消息 {date}</title>
     </head>
     <body>
         <h1>南哪消息 {date}</h1>

@@ -71,20 +71,30 @@
         .then(function(data){
           var resultDiv = document.getElementById("result");
           resultDiv.innerHTML = "";
+          var metaDiv = document.createElement("div");
+          metaDiv.innerHTML = "<p class='text-muted'>日期：" + escapeHTML(data.data.date || '')
+            + "　No." + escapeHTML(String(data.data.no ?? ''))
+            + "　格言：" + escapeHTML(data.data.saying || '')
+            + "　地点：" + escapeHTML(data.data.loc || '') + "</p>";
+          resultDiv.appendChild(metaDiv);
 
           for(var section in data.data){
-            if(section.endsWith("-v"))
+            if(section.endsWith("-v") || ["date","no","saying","loc","columns","notices"].includes(section))
                 continue;
             var sectionDiv = document.createElement("div");
             if(section == "other")
               sectionDiv.innerHTML = "<h2>" + "校级活动" + "</h2>";
+            else if(section == "reference")
+              sectionDiv.innerHTML = "<h2>参考消息</h2>";
             else
             sectionDiv.innerHTML = "<h2>" + escapeHTML(section) + "</h2>";
             if(Array.isArray(data.data[section])){
               var ul = document.createElement("ul");
               data.data[section].forEach(function(item){
                 var li = document.createElement("li");
-                li.innerHTML = "<h3>" + escapeHTML(item.title) + "</h3>" + 
+                li.innerHTML = "<h3>" + escapeHTML(item.title) + "</h3>" +
+                  "<span class='badge bg-secondary'>优先级 " + escapeHTML(String(item.priority ?? 0)) + "</span>" +
+                  (item.image ? " <span class='badge bg-warning'>有图</span>" : "") +
                   (item.link ? " 原文：<a href=\"" + escapeHTML(item.link) + "\" target=\"_blank\">" + escapeHTML(item.link) + "</a>" : "");
                 if(item.id){
                   li.innerHTML += " <button class=\"btn btn-sm btn-secondary\" onclick=\"window.location.href='../review/" + escapeHTML(item.id) + "'\">Edit</button>";
@@ -106,6 +116,19 @@
               sectionDiv.appendChild(ul);
             }
             resultDiv.appendChild(sectionDiv);
+          }
+
+          if(Array.isArray(data.data.notices) && data.data.notices.length > 0){
+            var nDiv = document.createElement("div");
+            nDiv.innerHTML = "<h2>尾部横幅</h2>";
+            var nUl = document.createElement("ul");
+            data.data.notices.forEach(function(n){
+              var nLi = document.createElement("li");
+              nLi.textContent = "[" + (n.size || "medium") + "] " + (n.text || "");
+              nUl.appendChild(nLi);
+            });
+            nDiv.appendChild(nUl);
+            resultDiv.appendChild(nDiv);
           }
 
           for(var dueSection in data.due){

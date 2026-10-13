@@ -33,7 +33,7 @@
                 <form method="POST">
                     <div class="form-group">
                         <label>标题</label>
-                        <input type="text" name="title" class="form-control" value="{{ entry[3] }}" required>
+                        <input type="text" name="title" class="form-control" value="{{ entry[3] }}" id="s1" required>
                     </div>
                     <div class="form-group">
                         <label>刊载板块（讲座不需要填写板块为讲座，在下面的 tag 中选择即可）</label>
@@ -53,38 +53,217 @@
                                 onchange="toggleDeadlineFunc(this);">
                             <label class="form-check-label" for="toggleDeadline">使用截止日期</label>
                         </div>
-                        <div id="deadlineField" style="display:none;">
+                        <div id="deadlineField" {% if entry[8] %}style="display:block;" {% else %}style="display:none;" {% endif%}>
                             <input type="date" id="due_time" name="due_time" class="form-control mt-2">
                             <input type="button" value="Clear" class="btn btn-primary mt-2"
                                 onclick="document.getElementById('due_time').value=''" />
                         </div>
                         <div id="shortTitleField"{% if entry[8] %}style="display:block;" {% else %}style="display:none;" {% endif%}>
                             <label>短标题（将显示在ddl表格）</label>
-                            <input type="text" name="short_title" class="form-control">
+                            <input type="text" name="short_title" class="form-control" id="s2">
                         </div>
                     </div>
+
+                    <!-- 讲座结构化编辑界面 -->
+                    <div id="lectureFields" style="display:none;">
+                        <h4 class="mt-4 mb-3">讲座详细信息</h4>
+                            <button type="button" class="btn btn-warning ms-2" onclick="copyPrompt()">复制提示词</button>
+                            <button type="button" class="btn btn-success ms-2" onclick="loadFromJson()">从JSON加载</button>
+                        <!-- 系列信息 -->
+                        <div class="form-group mt-3">
+                            <h5>系列信息</h5>
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <label>系列名</label>
+                                    <input type="text" id="seriesName" class="form-control" placeholder="如：学术前沿讲座系列">
+                                </div>
+                                <div class="col-md-4">
+                                    <label>系列编号</label>
+                                    <input type="text" id="seriesNumber" class="form-control" placeholder="如：第1期">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 标题信息 -->
+                        <div class="form-group mt-3">
+                            <h5>标题信息</h5>
+                            <div class="mb-2">
+                                <label>主标题</label>
+                                <input type="text" id="primaryTitle" class="form-control">
+                            </div>
+                            <div>
+                                <label>其他语言标题</label>
+                                <input type="text" id="secondaryTitle" class="form-control" placeholder="英文标题或其他语言标题">
+                            </div>
+                        </div>
+
+                        <!-- 时间安排 -->
+                        <div class="form-group mt-3">
+                            <h5>时间安排</h5>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label>日期</label>
+                                    <input type="date" id="scheduleDate" class="form-control">
+                                </div>
+                                <div class="col-md-4">
+                                    <label>开始时间</label>
+                                    <input type="time" id="startTime" class="form-control">
+                                </div>
+                                <div class="col-md-4">
+                                    <label>结束时间</label>
+                                    <input type="time" id="endTime" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group mt-3">
+                            <label>讲座地点</label>
+                            <!-- <textarea id="venue" class="form-control" rows="1"></textarea> -->
+                            <input type="text" id="venue" class="form-control" placeholder="如：仙林校区计算机楼421">
+                        </div>
+
+                        <!-- 主办方 -->
+                        <div class="form-group mt-3">
+                            <label>主办方</label>
+                            <input type="text" id="organizer" class="form-control" placeholder="如：计算机学院">
+                        </div>
+
+                        <!-- 主讲人 -->
+                        <div class="form-group mt-3">
+                            <h5>主讲人 <button type="button" class="btn btn-sm btn-outline-primary" onclick="addSpeaker()">+ 添加主讲人</button></h5>
+                            <div id="speakersContainer">
+                                <div class="speaker-item border rounded p-3 mb-2">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <label>姓名</label>
+                                            <input type="text" class="form-control speaker-name">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label>单位和职称</label>
+                                            <input type="text" class="form-control speaker-title" placeholder="如：南京大学计算机学院 教授">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label>操作</label><br>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSpeaker(this)">删除</button>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <label>简介</label>
+                                        <textarea class="form-control speaker-biography" rows="2"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 与谈人 -->
+                        <div class="form-group mt-3">
+                            <h5>与谈人 <button type="button" class="btn btn-sm btn-outline-primary" onclick="addDiscussant()">+ 添加与谈人</button></h5>
+                            <div id="discussantsContainer">
+                            </div>
+                        </div>
+
+                        <!-- 邀请人 -->
+                        <div class="form-group mt-3">
+                            <h5>邀请人</h5>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label>姓名</label>
+                                    <input type="text" id="inviterName" class="form-control">
+                                </div>
+                                <div class="col-md-4">
+                                    <label>单位和职称</label>
+                                    <input type="text" id="inviterTitle" class="form-control" placeholder="如：南京大学计算机学院 教授">
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <label>简介</label>
+                                <textarea id="inviterBiography" class="form-control" rows="2"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- 主持人 -->
+                        <div class="form-group mt-3">
+                            <h5>主持人</h5>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label>姓名</label>
+                                    <input type="text" id="moderatorName" class="form-control">
+                                </div>
+                                <div class="col-md-4">
+                                    <label>单位和职称</label>
+                                    <input type="text" id="moderatorTitle" class="form-control" placeholder="如：南京大学计算机学院 教授">
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <label>简介</label>
+                                <textarea id="moderatorBiography" class="form-control" rows="2"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- 讲座摘要 -->
+                        <div class="form-group mt-3">
+                            <label>讲座摘要</label>
+                            <textarea id="abstract" class="form-control" rows="4"></textarea>
+                        </div>
+
+                        <!-- 面向人群 -->
+                        <div class="form-group mt-3">
+                            <label>面向人群</label>
+                            <input type="text" id="targetAudience" class="form-control" placeholder="如：计算机学院学生，不特定则不填">
+                        </div>
+
+                        <!-- 报名方式 -->
+                        <div class="form-group mt-3">
+                            <label>报名方式</label>
+                            <textarea id="registration" class="form-control" rows="2" placeholder="具体报名方式、不要求则不填"></textarea>
+                        </div>
+
+                        <!-- 线上参与方法 -->
+                        <div class="form-group mt-3">
+                            <label>线上参与方法</label>
+                            <textarea id="onlineAccess" class="form-control" rows="2" placeholder="腾讯会议、Zoom链接等"></textarea>
+                        </div>
+
+                        <!-- 生成描述按钮 -->
+                        <div class="form-group mt-3">
+                            <button type="button" class="btn btn-info" onclick="generateDescription()">根据结构化内容生成描述</button>
+                        </div>
+
+                        <!-- 隐藏字段存储JSON数据 -->
+                        <input type="hidden" id="lectureDataJson" name="lecture_data" value="">
+                    </div>
+
                     <div class="form-group">
                         <label>描述</label>
                         <textarea name="description" class="form-control" required rows="10">{{ entry[5] }}</textarea>
                         <button type="button" class="btn btn-outline-secondary mt-2" onclick="kernLineBreaks()">合并连续换行</button>
+                        <button type="button" class="btn btn-outline-secondary mt-2" onclick="removeAllSpaces()">删除全部空格</button>
                     </div>
-                    
+
+                    <div class="form-group mt-2">
+                        <label>优先级（整数，越大在报纸中越靠上，默认 0）</label>
+                        <input type="number" name="priority" class="form-control" value="{{ entry[18] if entry|length > 18 and entry[18] is not none else 0 }}" step="1">
+                    </div>
+
                     <div class="form-group mt-3">
                         <label>标签 (可选):</label>
                         <div class="btn-group" role="group" aria-label="Tag selection">
-                            <input type="radio" class="btn-check" name="tag" id="tagA" value="校级活动" autocomplete="off" {% if entry[15]=="校级活动" %}checked{% endif %}>
+                            <input type="radio" class="btn-check" name="tag" id="tagA" value="校级活动" autocomplete="off" {% if entry[15]=="校级活动" %}checked{% endif %} onchange="toggleLectureFields()">
                             <label class="btn btn-outline-primary rounded-pill me-1" for="tagA">校级活动</label>
 
-                            <input type="radio" class="btn-check" name="tag" id="tagB" value="院级活动" autocomplete="off" {% if entry[15]=='院级活动' %}checked{% endif %}>
+                            <input type="radio" class="btn-check" name="tag" id="tagB" value="院级活动" autocomplete="off" {% if entry[15]=='院级活动' %}checked{% endif %} onchange="toggleLectureFields()">
                             <label class="btn btn-outline-primary rounded-pill me-1" for="tagB">院级活动</label>
 
-                            <input type="radio" class="btn-check" name="tag" id="tagC" value="社团活动" autocomplete="off" {% if entry[15]=='社团活动' %}checked{% endif %}>
+                            <input type="radio" class="btn-check" name="tag" id="tagC" value="社团活动" autocomplete="off" {% if entry[15]=='社团活动' %}checked{% endif %} onchange="toggleLectureFields()">
                             <label class="btn btn-outline-primary rounded-pill me-2" for="tagC">社团活动</label>
 
-                            <input type="radio" class="btn-check" name="tag" id="tagD" value="讲座" autocomplete="off" {% if entry[15]=="讲座" %}checked{% endif %}>
+                            <input type="radio" class="btn-check" name="tag" id="tagD" value="讲座" autocomplete="off" {% if entry[15]=="讲座" %}checked{% endif %} onchange="toggleLectureFields()">
                             <label class="btn btn-outline-primary rounded-pill me-1" for="tagD">讲座</label>
 
-                            <input type="radio" class="btn-check" name="tag" id="tagNone" value="" autocomplete="off" {% if not entry[15] %}checked{% endif %}>
+                            <input type="radio" class="btn-check" name="tag" id="tagE" value="招聘升学宣讲" autocomplete="off" {% if entry[15]=="招聘升学宣讲" %}checked{% endif %} onchange="toggleLectureFields()">
+                            <label class="btn btn-outline-primary rounded-pill me-1" for="tagE">招聘升学宣讲</label>
+
+                            <input type="radio" class="btn-check" name="tag" id="tagNone" value="" autocomplete="off" {% if not entry[15] %}checked{% endif %} onchange="toggleLectureFields()">
                             <label class="btn btn-outline-secondary rounded-pill" for="tagNone">取消</label>
                         </div>
                     </div>
@@ -95,10 +274,11 @@
                         <input class="form-check-input" type="checkbox" id="useImage" name="use_image" {% if entry[13]==1
                             %}checked{% endif %}>
                         <label class="form-check-label" for="useImage">利用图片</label>
+                        <div class="form-text">勾选后图片刊载于 PDF 第二页附页（正文自动加“图片见PDF文档第二页图N”），PNG 下载不含附页；参考消息配图直接跟在正文下面。</div>
                     </div>
                     {% endif %}
                     <div class="mt-3">
-                    <button type="submit" class="btn btn-primary">提交</button>
+                    <button type="submit" class="btn btn-primary" onclick="updateLectureData()">提交</button>
                     <a href="{{ url_for('cancel', entry_id=entry[0]) }}" class="btn btn-secondary">取消</a>
                     </div>
                 </form>
@@ -115,6 +295,29 @@
 </html>
 
 <script type="text/javascript">
+    // 存储讲座数据，在页面加载时初始化
+    let lectureData = {};
+    
+    // 页面加载时初始化数据
+    document.addEventListener('DOMContentLoaded', function() {
+        // 从Flask传入的entry中获取讲座数据
+        {% if entry|length > 17 and entry[17] and entry[15]=="讲座" %}
+        try {
+            lectureData = JSON.parse('{{ entry[17]|safe }}');
+            loadLectureData();
+        } catch (e) {
+            console.log('No existing lecture data or invalid JSON');
+            lectureData = {};
+        }
+        {% endif %}
+        
+        // 检查是否应该显示讲座字段
+        toggleLectureFields();
+        
+        // 同步截止日期和讲座日期
+        syncDatesOnLoad();
+    });
+
     function CheckType(selector) {
         var val = selector.value;
         var custom = document.getElementById('customType');
@@ -130,10 +333,13 @@
             selector.name = "entry_type"
         }
     }
+    
     function toggleDeadlineFunc(checkbox) {
         var deadlineDiv = document.getElementById('deadlineField');
         var dueInput = document.getElementById('due_time');
         var shortTitleDiv = document.getElementById('shortTitleField');
+        var scheduleDate = document.getElementById('scheduleDate');
+        
         if (checkbox.checked) {
             deadlineDiv.style.display = 'block';
             if (shortTitleDiv) shortTitleDiv.style.display = 'block';
@@ -144,16 +350,458 @@
             var titleInput = document.querySelector('input[name="title"]');
             var shortTitleInput = document.querySelector('input[name="short_title"]');
             shortTitleInput.value = titleInput.value;
+            
+            // 同步讲座日期
+            if (scheduleDate && dueInput.value) {
+                scheduleDate.value = dueInput.value;
+            }
         } else {
             deadlineDiv.style.display = 'none';
             if (shortTitleDiv) shortTitleDiv.style.display = 'none';
             dueInput.value = '';
         }
     }
+
+    function toggleLectureFields() {
+        var lectureFields = document.getElementById('lectureFields');
+        var selectedTag = document.querySelector('input[name="tag"]:checked');
+        
+        if (selectedTag && selectedTag.value === '讲座') {
+            lectureFields.style.display = 'block';
+        } else {
+            lectureFields.style.display = 'none';
+        }
+    }
+
+    function syncDatesOnLoad() {
+        var dueInput = document.getElementById('due_time');
+        var scheduleDate = document.getElementById('scheduleDate');
+        
+        if (dueInput && scheduleDate) {
+            // 如果有截止日期，同步到讲座日期
+            if (dueInput.value && !scheduleDate.value) {
+                scheduleDate.value = dueInput.value;
+            }
+            
+            // 添加事件监听器保持同步
+            dueInput.addEventListener('change', function() {
+                if (this.value) {
+                    scheduleDate.value = this.value;
+                }
+            });
+            
+            scheduleDate.addEventListener('change', function() {
+                if (this.value) {
+                    dueInput.value = this.value;
+                }
+            });
+        }
+    }
+
+    function addSpeaker() {
+        var container = document.getElementById('speakersContainer');
+        var speakerDiv = document.createElement('div');
+        speakerDiv.className = 'speaker-item border rounded p-3 mb-2';
+        speakerDiv.innerHTML = `
+            <div class="row">
+                <div class="col-md-4">
+                    <label>姓名</label>
+                    <input type="text" class="form-control speaker-name">
+                </div>
+                <div class="col-md-4">
+                    <label>单位和职称</label>
+                    <input type="text" class="form-control speaker-title">
+                </div>
+                <div class="col-md-4">
+                    <label>操作</label><br>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSpeaker(this)">删除</button>
+                </div>
+            </div>
+            <div class="mt-2">
+                <label>简介</label>
+                <textarea class="form-control speaker-biography" rows="2"></textarea>
+            </div>
+        `;
+        container.appendChild(speakerDiv);
+    }
+
+    function removeSpeaker(button) {
+        button.closest('.speaker-item').remove();
+    }
+
+    function addDiscussant() {
+        var container = document.getElementById('discussantsContainer');
+        var discussantDiv = document.createElement('div');
+        discussantDiv.className = 'discussant-item border rounded p-3 mb-2';
+        discussantDiv.innerHTML = `
+            <div class="row">
+                <div class="col-md-4">
+                    <label>姓名</label>
+                    <input type="text" class="form-control discussant-name">
+                </div>
+                <div class="col-md-4">
+                    <label>单位和职称</label>
+                    <input type="text" class="form-control discussant-title">
+                </div>
+                <div class="col-md-4">
+                    <label>操作</label><br>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeDiscussant(this)">删除</button>
+                </div>
+            </div>
+            <div class="mt-2">
+                <label>简介</label>
+                <textarea class="form-control discussant-biography" rows="2"></textarea>
+            </div>
+        `;
+        container.appendChild(discussantDiv);
+    }
+
+    function removeDiscussant(button) {
+        button.closest('.discussant-item').remove();
+    }
+
+    function loadLectureData() {
+        if (!lectureData || Object.keys(lectureData).length === 0) return;
+        
+        // 系列信息
+        if (lectureData.series) {
+            document.getElementById('seriesName').value = lectureData.series.name || '';
+            document.getElementById('seriesNumber').value = lectureData.series.number || '';
+        }
+        
+        // 标题信息
+        if (lectureData.title) {
+            document.getElementById('primaryTitle').value = lectureData.title.primary || '';
+            document.getElementById('secondaryTitle').value = lectureData.title.secondary || '';
+            document.getElementById('s1').value = lectureData.title.primary || '';
+            document.getElementById('s2').value = lectureData.title.primary || '';
+        }
+        
+        // 时间安排
+        if (lectureData.schedule) {
+            document.getElementById('scheduleDate').value = lectureData.schedule.date || '';
+            document.getElementById('startTime').value = lectureData.schedule.start_time || '';
+            document.getElementById('endTime').value = lectureData.schedule.end_time || '';
+            if (lectureData.schedule.date) {
+                document.getElementById('due_time').value = lectureData.schedule.date;
+                document.getElementById('toggleDeadline').checked = true;
+                toggleDeadlineFunc(document.getElementById('toggleDeadline'));
+            }
+        }
+        
+        // 主办方
+        document.getElementById('organizer').value = lectureData.organizer || '';
+        
+        // 主讲人
+        if (lectureData.speakers && lectureData.speakers.length > 0) {
+            var speakersContainer = document.getElementById('speakersContainer');
+            speakersContainer.innerHTML = ''; // 清空默认内容
+            lectureData.speakers.forEach(function(speaker) {
+                addSpeaker();
+                var lastSpeaker = speakersContainer.lastElementChild;
+                lastSpeaker.querySelector('.speaker-name').value = speaker.name || '';
+                lastSpeaker.querySelector('.speaker-title').value = speaker.title || '';
+                lastSpeaker.querySelector('.speaker-biography').value = speaker.biography || '';
+            });
+        }
+        
+        // 与谈人
+        if (lectureData.discussants && lectureData.discussants.length > 0) {
+            lectureData.discussants.forEach(function(discussant) {
+                addDiscussant();
+                var container = document.getElementById('discussantsContainer');
+                var lastDiscussant = container.lastElementChild;
+                lastDiscussant.querySelector('.discussant-name').value = discussant.name || '';
+                lastDiscussant.querySelector('.discussant-title').value = discussant.title || '';
+                lastDiscussant.querySelector('.discussant-biography').value = discussant.biography || '';
+            });
+        }
+        
+        // 邀请人
+        if (lectureData.inviter) {
+            document.getElementById('inviterName').value = lectureData.inviter.name || '';
+            document.getElementById('inviterTitle').value = lectureData.inviter.title || '';
+            document.getElementById('inviterBiography').value = lectureData.inviter.biography || '';
+        }
+        
+        // 主持人
+        if (lectureData.moderator) {
+            document.getElementById('moderatorName').value = lectureData.moderator.name || '';
+            document.getElementById('moderatorTitle').value = lectureData.moderator.title || '';
+            document.getElementById('moderatorBiography').value = lectureData.moderator.biography || '';
+        }
+        
+        // 其他信息
+        document.getElementById('abstract').value = lectureData.abstract || '';
+        document.getElementById('venue').value = lectureData.venue || '';
+        document.getElementById('targetAudience').value = lectureData.target_audience || '';
+        document.getElementById('registration').value = lectureData.registration || '';
+        document.getElementById('onlineAccess').value = lectureData.online_access || '';
+    }
+
+    function updateLectureData() {
+        var selectedTag = document.querySelector('input[name="tag"]:checked');
+        if (!selectedTag || selectedTag.value !== '讲座') {
+            document.getElementById('lectureDataJson').value = '';
+            return;
+        }
+        
+        var data = {};
+        
+        // 系列信息
+        var seriesName = document.getElementById('seriesName').value.trim();
+        var seriesNumber = document.getElementById('seriesNumber').value.trim();
+        if (seriesName || seriesNumber) {
+            data.series = {
+                name: seriesName,
+                number: seriesNumber
+            };
+        }
+        
+        // 标题信息
+        var primaryTitle = document.getElementById('primaryTitle').value.trim();
+        var secondaryTitle = document.getElementById('secondaryTitle').value.trim();
+        if (primaryTitle || secondaryTitle) {
+            data.title = {
+                primary: primaryTitle,
+                secondary: secondaryTitle
+            };
+        }
+        
+        // 时间安排
+        var scheduleDate = document.getElementById('scheduleDate').value;
+        var startTime = document.getElementById('startTime').value;
+        var endTime = document.getElementById('endTime').value;
+        if (scheduleDate || startTime || endTime) {
+            data.schedule = {
+                date: scheduleDate,
+                start_time: startTime,
+                end_time: endTime
+            };
+        }
+
+        var venue = document.getElementById('venue').value.trim();
+        if (venue) data.venue = venue;
+        
+        // 主办方
+        var organizer = document.getElementById('organizer').value.trim();
+        if (organizer) {
+            data.organizer = organizer;
+        }
+        
+        // 主讲人
+        var speakers = [];
+        document.querySelectorAll('.speaker-item').forEach(function(item) {
+            var name = item.querySelector('.speaker-name').value.trim();
+            var title = item.querySelector('.speaker-title').value.trim();
+            var biography = item.querySelector('.speaker-biography').value.trim();
+            if (name || title || biography) {
+                speakers.push({
+                    name: name,
+                    title: title,
+                    biography: biography
+                });
+            }
+        });
+        if (speakers.length > 0) {
+            data.speakers = speakers;
+        }
+        
+        // 与谈人
+        var discussants = [];
+        document.querySelectorAll('.discussant-item').forEach(function(item) {
+            var name = item.querySelector('.discussant-name').value.trim();
+            var title = item.querySelector('.discussant-title').value.trim();
+            var biography = item.querySelector('.discussant-biography').value.trim();
+            if (name || title || biography) {
+                discussants.push({
+                    name: name,
+                    title: title,
+                    biography: biography
+                });
+            }
+        });
+        if (discussants.length > 0) {
+            data.discussants = discussants;
+        }
+        
+        // 邀请人
+        var inviterName = document.getElementById('inviterName').value.trim();
+        var inviterTitle = document.getElementById('inviterTitle').value.trim();
+        var inviterBiography = document.getElementById('inviterBiography').value.trim();
+        if (inviterName || inviterTitle || inviterBiography) {
+            data.inviter = {
+                name: inviterName,
+                title: inviterTitle,
+                biography: inviterBiography
+            };
+        }
+        
+        // 主持人
+        var moderatorName = document.getElementById('moderatorName').value.trim();
+        var moderatorTitle = document.getElementById('moderatorTitle').value.trim();
+        var moderatorBiography = document.getElementById('moderatorBiography').value.trim();
+        if (moderatorName || moderatorTitle || moderatorBiography) {
+            data.moderator = {
+                name: moderatorName,
+                title: moderatorTitle,
+                biography: moderatorBiography
+            };
+        }
+        
+        // 其他信息
+        var abstract = document.getElementById('abstract').value.trim();
+        if (abstract) data.abstract = abstract;
+        
+        var targetAudience = document.getElementById('targetAudience').value.trim();
+        if (targetAudience) data.target_audience = targetAudience;
+        
+        var registration = document.getElementById('registration').value.trim();
+        if (registration) data.registration = registration;
+        
+        var onlineAccess = document.getElementById('onlineAccess').value.trim();
+        if (onlineAccess) data.online_access = onlineAccess;
+        
+        document.getElementById('lectureDataJson').value = JSON.stringify(data);
+    }
+
+    function generateDescription() {
+        var description = '';
+        var parts = [];
+        
+        // 获取所有字段值
+        var seriesName = document.getElementById('seriesName').value.trim();
+        var seriesNumber = document.getElementById('seriesNumber').value.trim();
+        var scheduleDate = document.getElementById('scheduleDate').value;
+        var startTime = document.getElementById('startTime').value;
+        var targetAudience = document.getElementById('targetAudience').value.trim();
+        var registration = document.getElementById('registration').value.trim();
+        var onlineAccess = document.getElementById('onlineAccess').value.trim();
+        var venue = document.getElementById('venue').value.trim();
+        
+        // 获取主讲人信息
+        var speakers = [];
+        document.querySelectorAll('.speaker-item').forEach(function(item) {
+            var name = item.querySelector('.speaker-name').value.trim();
+            var title = item.querySelector('.speaker-title').value.trim();
+            if (name || title) {
+                speakers.push({
+                    name: name,
+                    title: title
+                });
+            }
+        });
+        
+        // 获取主持人信息
+        var moderatorName = document.getElementById('moderatorName').value.trim();
+        var moderatorTitle = document.getElementById('moderatorTitle').value.trim();
+        
+        // 第一行：讲座系列和期数
+        if (seriesName || seriesNumber) {
+            var seriesLine = '';
+            if (seriesName) {
+                seriesLine += seriesName;
+            }
+            if (seriesNumber) {
+                seriesLine += ' ' + seriesNumber;
+            }
+            parts.push(seriesLine);
+        }
+        
+        // 第二行：时间
+        if (scheduleDate || startTime) {
+            var timeLine = '时间：';
+            if (scheduleDate) {
+                var date = new Date(scheduleDate);
+                var month = date.getMonth() + 1;
+                var day = date.getDate();
+                timeLine += month + '月' + day + '日';
+            }
+            if (startTime) {
+                timeLine += ' ' + startTime;
+            }
+            parts.push(timeLine);
+        }
+        
+        if (venue) {
+            parts.push('地点：' + venue);
+        }
+        
+        // 第四行：主讲人
+        if (speakers.length > 0) {
+            var speakersLine = '主讲人：';
+            var speakerStrings = [];
+            speakers.forEach(function(speaker) {
+                var speakerStr = '';
+                if (speaker.name) {
+                    speakerStr += speaker.name;
+                }
+                if (speaker.title) {
+                    speakerStr += ' ' + speaker.title;
+                }
+                if (speakerStr) {
+                    speakerStrings.push(speakerStr);
+                }
+            });
+            if (speakerStrings.length > 0) {
+                speakersLine += speakerStrings.join('、');
+                parts.push(speakersLine);
+            }
+        }
+        
+        // 第五行：主持人
+        if (moderatorName || moderatorTitle) {
+            var moderatorLine = '主持人：';
+            if (moderatorName) {
+                moderatorLine += moderatorName;
+            }
+            if (moderatorTitle) {
+                moderatorLine += ' ' + moderatorTitle;
+            }
+            parts.push(moderatorLine);
+        }
+        
+        // 第六行：面向人群
+        if (targetAudience) {
+            parts.push('面向' + targetAudience);
+        }
+        
+        // 第七行：线上参与方式
+        if (onlineAccess) {
+            parts.push('线上参与方式：' + onlineAccess);
+        }
+        
+        // 第八行：报名方法
+        if (registration) {
+            parts.push('报名方法见原文');
+        }
+        
+        // 组合所有部分
+        description = parts.join('\n');
+        
+        // 将生成的描述填入描述框
+        var descriptionTextarea = document.querySelector('textarea[name="description"]');
+        if (description) {
+            // 如果描述框已有内容，询问是否覆盖
+            if (descriptionTextarea.value.trim() && (descriptionTextarea.value != "None") && !confirm('描述框已有内容，是否覆盖？')) {
+                return;
+            }
+            descriptionTextarea.value = description;
+        } else {
+            alert('没有足够的信息生成描述');
+        }
+    }
+
     function kernLineBreaks() {
         var textarea = document.getElementsByName('description')[0];
         if (textarea) {
             textarea.value = textarea.value.replace(/(\r?\n){2,}/g, '\n');
+        }
+    }
+    function removeAllSpaces() {
+        var textarea = document.getElementsByName('description')[0];
+        if (textarea) {
+            textarea.value = textarea.value.replace(/[ \t]+/g, '');
         }
     }
     function togglePreviewFunc(checkbox) {
@@ -169,4 +817,129 @@
             if (left) left.style.flex = 'unset';
         }
     }
+    function copyPrompt() {
+        var prompt = `请帮我从给定的图片或链接中提取讲座信息，并按照JSON格式返回：
+
+    JSON格式示例：
+    {
+        "series": {
+            "name": "系列名",
+            "number": "系列编号，如第143期"
+        },
+        "title": {
+            "primary": "主标题",
+            "secondary": "其他语言标题"
+        },
+        "schedule": {
+            "date": "yyyy-mm-dd",
+            "start_time": "hh:mm",
+            "end_time": "hh:mm"
+        },
+        "venue": "讲座地点",
+        "organizer": "主办方",
+        "speakers": [
+            {
+                "name": "主讲人姓名",
+                "title": "单位和职称，如南京大学计算机学院教授",
+                "biography": "简介"
+            }
+        ],
+        "discussants": [
+            {
+                "name": "与谈人姓名",
+                "title": "单位和职称，如南京大学计算机学院教授",
+                "biography": "简介"
+            }
+        ],
+        "inviter": {
+            "name": "邀请人姓名",
+            "title": "单位和职称，如南京大学计算机学院教授",
+            "biography": "简介"
+        },
+        "moderator": {
+            "name": "主持人姓名",
+            "title": "单位和职称，如南京大学计算机学院教授",
+            "biography": "简介"
+        },
+        "abstract": "讲座摘要",
+        "target_audience": "面向人群，除非特定了仅有特定人群可以参加才填写，一般情况下请留空",
+        "registration": "报名方式，无需报名留空",
+        "online_access": "线上参与方法，如腾讯会议号，Zoom链接，没有则留空"
+    }
+
+    请访问链接提取信息：`+ "{{ entry[4] }}" + "\n当前年份为" + new Date().getFullYear() + "，请确保提取的讲座日期合理。";
+
+        // 使用现代浏览器的Clipboard API
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(prompt).then(function() {
+                // alert('提示词已复制到剪贴板。请注意如果讲座信息在链接的图片中，LLM可能无法处理');
+            }).catch(function(err) {
+                console.error('复制失败:', err);
+                fallbackCopyTextToClipboard(prompt);
+            });
+        } else {
+            // 降级处理
+            fallbackCopyTextToClipboard(prompt);
+        }
+    }
+
+    function fallbackCopyTextToClipboard(text) {
+        var textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.top = "0";
+        textArea.style.left = "0";
+        textArea.style.position = "fixed";
+        
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            var successful = document.execCommand('copy');
+            if (successful) {
+                // alert('提示词已复制到剪贴板。请注意如果讲座信息在链接的图片中，LLM可能无法处理');
+            } else {
+                alert('复制失败，请手动复制');
+            }
+        } catch (err) {
+            console.error('Fallback: 复制失败', err);
+            alert('复制失败，请手动复制');
+        }
+        
+        document.body.removeChild(textArea);
+    }
+
+    function loadFromJson() {
+        var jsonText = prompt('请粘贴JSON数据：');
+        if (!jsonText) {
+            return;
+        }
+        
+        try {
+            lectureData = JSON.parse(jsonText);
+            loadLectureData();
+            // alert('数据加载成功');
+        } catch (e) {
+            alert('JSON格式错误，请检查格式：' + e.message);
+        }
+    }
+
+    const radioTrigger = document.getElementById('tagD');
+    const syncIds = ['s1', 's2', 'primaryTitle'];
+    const syncElements = syncIds
+        .map(id => document.getElementById(id))
+        .filter(el => el !== null);
+    syncElements.forEach(sourceInput => {
+        sourceInput.addEventListener('input', (e) => {
+            if (radioTrigger && radioTrigger.checked) {
+                const newValue = e.target.value;
+                syncElements.forEach(targetInput => {
+                    if (targetInput.value !== newValue) {
+                        targetInput.value = newValue;
+                    }
+                });
+            }
+        });
+    });
+
 </script>

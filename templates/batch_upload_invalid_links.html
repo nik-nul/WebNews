@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>批量上传无效链接</title>
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-5">
+    <h2>批量上传无效链接</h2>
+    <form method="POST">
+        <div class="mb-3">
+            <label>输入无效链接（每行一个）</label>
+            <textarea name="links" class="form-control" rows="10" required placeholder="https://..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-danger">批量上传并置无效</button>
+        <a href="{{ url_for('main') }}" class="btn btn-secondary">返回</a>
+    </form>
+</div>
+</body>
+</html>

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>刊发讲座（自动平衡版）</title>
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css">
+</head>
+<body>
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <div class="alert alert-info m-3" role="alert">
+            {% for message in messages %}
+            <div>{{ message|safe }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+<div class="container-fluid my-3">
+    <div class="row">
+        <div class="col-md-5 mb-3">
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <strong>讲座刊发设置（自动平衡，讲座预告+往期讲座）</strong>
+                    <a href="{{ url_for('publish') }}" class="btn btn-sm btn-outline-secondary">全报刊发</a>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('publish_lecture') }}" id="publishForm">
+                        <input type="hidden" name="action" value="preview_pdf">
+                        <div class="row g-2">
+                            <div class="col-md-12">
+                                <label class="form-label">日期（UTC+8 中午12点前算前一天，可手动改）</label>
+                                <input type="date" class="form-control" name="date" id="dateInput" value="{{ date }}">
+                                <div class="form-text">默认按北京时间规则：{{ default_date }}；讲座数据与全报同库（tag=讲座）</div>
+                            </div>
+                        </div>
+                        <div class="row g-2 mt-1">
+                            <div class="col-md-4">
+                                <label class="form-label">列数 columns（默认 4）</label>
+                                <input type="number" class="form-control" name="columns" value="{{ columns }}" min="1" max="8" step="1">
+                                <div class="form-text">页面宽度=9in+(n-2)×4.72in 自动算，2列=9in，4列=旧宽度</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">PNG ppi（默认 300，仅 PNG 下载用；PDF 预览不受影响）</label>
+                                <input type="number" class="form-control" name="ppi" value="{{ ppi }}" min="40" max="600" step="1">
+                                <div class="form-text">若 PNG &gt; 30.5MB 则自动下降搜索尽量大的 ppi</div>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end gap-2">
+                                <button type="button" id="loadDateBtn" class="btn btn-outline-primary">载入该日期</button>
+                            </div>
+                        </div>
+                        <hr>
+                        <h6>讲座优先级（越大越靠上，可为负数；模板内按 (-priority,-height) 分层 LPT 自动平衡）<span id="priMsg" class="text-muted small ms-2"></span></h6>
+                        {% macro pri_row(item) %}
+                        <tr id="row-{{ item['id'] }}">
+                            <td class="text-center" style="width:56px;">
+                                <strong id="pri-val-{{ item['id'] }}" style="font-size: 1.15em;">{{ item.get('priority', 0) }}</strong>
+                                <input type="hidden" name="priority_{{ item['id'] }}" id="pri-input-{{ item['id'] }}" value="{{ item.get('priority', 0) }}">
+                            </td>
+                            <td style="width:172px;">
+                                <div class="btn-group" role="group" aria-label="调整优先级">
+                                    <button type="button" class="btn btn-outline-primary pri-btn" data-id="{{ item['id'] }}" data-dir="top" title="置顶：超过本区域最高优先级">⇑</button>
+                                    <button type="button" class="btn btn-outline-primary pri-btn" data-id="{{ item['id'] }}" data-dir="up" title="上移：优先级+1（顶部独占最高级时无变化）">▲</button>
+                                    <button type="button" class="btn btn-outline-primary pri-btn" data-id="{{ item['id'] }}" data-dir="down" title="下移：优先级-1（底部独占最低级时无变化）">▼</button>
+                                    <button type="button" class="btn btn-outline-primary pri-btn" data-id="{{ item['id'] }}" data-dir="bottom" title="置底：低于本区域最低优先级">⇓</button>
+                                </div>
+                            </td>
+                            <td class="small">{{ item['title'] }}{% if item.get('image') %} <span class="badge bg-warning">有图</span>{% endif %}</td>
+                            <td class="small text-muted" style="width:60px;">{{ item['id'] }}</td>
+                            <td style="width:64px;"><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('review', entry_id=item['id']) }}" target="_blank" title="新窗口打开审阅页">审阅</a></td>
+                        </tr>
+                        {% endmacro %}
+                        <div class="mt-2" id="sec-lecture">
+                            <strong>讲座（{{ issue['data']['lecture']|length }} 条）</strong>
+                            <button type="button" class="btn btn-sm btn-outline-secondary ms-2 tidy-btn" data-region="lecture" title="把本区域不同级别压缩为连续整数（保序、保并列）">整理</button>
+                            {% if issue['data']['lecture']|length == 0 %}
+                            <div class="text-muted small">本期无讲座消息</div>
+                            {% else %}
+                            <table class="table table-sm table-hover align-middle">
+                                <thead><tr><th>优先级</th><th>调整</th><th>标题</th><th>ID</th><th>审阅</th></tr></thead>
+                                <tbody>
+                                {% for item in issue['data']['lecture']|sort(attribute='priority', reverse=true) %}
+                                {{ pri_row(item) }}
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                            {% endif %}
+                        </div>
+                        <div class="text-muted small mt-2">往期讲座表（{{ issue['due']['lecture']|selectattr('due_time')|list|length }} 行）随模板自动平衡切分，无需手动调整。</div>
+                        <div class="d-flex gap-2 mt-3">
+                            <button type="submit" class="btn btn-success">保存并预览 PDF</button>
+                            <button type="submit" class="btn btn-warning" formaction="{{ url_for('publish_lecture_png') }}">生成 PNG 下载</button>
+                            <a id="dlPdfBtn" class="btn btn-info" href="#">下载 PDF</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <a class="text-decoration-none" data-bs-toggle="collapse" href="#rawCollapse" role="button">高级 fallback：raw JSON（点击展开/折叠）</a>
+                </div>
+                <div class="collapse" id="rawCollapse">
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('publish_lecture') }}">
+                        <input type="hidden" name="action" value="save_raw">
+                        <input type="hidden" name="date" value="{{ date }}">
+                        <div class="form-group">
+                            <label>Content（与全报同 schema，模板只取其中 lecture / lecture-due / columns / date）</label>
+                            <textarea class="form-control font-monospace" name="content" rows="20">{{ content }}</textarea>
+                        </div>
+                        <div class="mt-2 d-flex gap-2">
+                            <button type="button" id="fetchBtn" class="btn btn-outline-primary">从 DB 重新抓取该日期</button>
+                            <input type="submit" value="用此 JSON 直接刊发" class="btn btn-danger">
+                        </div>
+                    </form>
+                </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-7 p-0" style="height: 100vh;">
+            <iframe class="w-100" style="height: 100vh; border: none;" src="../static/lecture_latest.pdf"></iframe>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.getElementById('loadDateBtn').addEventListener('click', function() {
+        var date = document.getElementById('dateInput').value;
+        if (!date) { alert('请选择日期'); return; }
+        window.location.href = "{{ url_for('publish_lecture') }}?date=" + encodeURIComponent(date);
+    });
+    document.getElementById('dlPdfBtn').addEventListener('click', function(e) {
+        e.preventDefault();
+        var date = document.getElementById('dateInput').value;
+        if (!date) { alert('请选择日期'); return; }
+        window.location.href = "{{ url_for('download', kind='lec_pdf', date='2000-01-01') }}".replace('2000-01-01', encodeURIComponent(date));
+    });
+    // 优先级调整纯本地：秒算、秒重排，只在“保存并预览 PDF / 生成 PNG”提交时一次性入库并自动整理
+    var priDirty = false;
+    function markDirty() { priDirty = true; }
+    document.getElementById('publishForm').addEventListener('submit', function() { priDirty = false; });
+    window.addEventListener('beforeunload', function(e) {
+        if (priDirty) { e.preventDefault(); e.returnValue = ''; }
+    });
+    function readBucket(tbody) {
+        return Array.from(tbody.querySelectorAll('tr')).map(function(row) {
+            return {
+                id: parseInt(row.id.replace('row-', ''), 10) || 0,
+                pri: parseInt(row.querySelector('[id^="pri-val-"]').textContent, 10) || 0
+            };
+        });
+    }
+    function shiftLocal(rows, targetId, dir) {
+        var idx = rows.findIndex(function(r) { return r.id === targetId; });
+        if (idx < 0 || !rows.length) return null;
+        var pm = rows[idx].pri;
+        var levels = Array.from(new Set(rows.map(function(r) { return r.pri; }))).sort(function(a, b) { return b - a; });
+        if (dir === 'up') {
+            if (idx === 0) {
+                // 已在最上：有同级则再升一级以示区分；独占最高级则维持现状
+                var sameTop = rows.filter(function(r) { return r.pri === pm; }).length;
+                if (sameTop === 1) return null;
+                return pm + 1;
+            }
+            var pa = rows[idx - 1].pri;
+            // 上方严格更高：只升一级（如 1 1 -1 中的 -1 按上调得 0，而非直接跳到 1）
+            if (pa > pm) return pm + 1;
+            if (pa === pm) {
+                var h = levels.filter(function(l) { return l > pm; });
+                return h.length ? Math.min.apply(null, h) : pm + 1;
+            }
+            return null;
+        }
+        if (dir === 'down') {
+            if (idx === rows.length - 1) {
+                // 已在最下：有同级则再降一级以示区分；独占最低级则维持现状
+                var sameBot = rows.filter(function(r) { return r.pri === pm; }).length;
+                if (sameBot === 1) return null;
+                return pm - 1;
+            }
+            var pb = rows[idx + 1].pri;
+            // 下方严格更低：只降一级
+            if (pb < pm) return pm - 1;
+            if (pb === pm) {
+                var lo = levels.filter(function(l) { return l < pm; });
+                return lo.length ? Math.max.apply(null, lo) : pm - 1;
+            }
+            return null;
+        }
+        if (dir === 'top') {
+            var sameTop = rows.filter(function(r) { return r.pri === pm; }).length;
+            if (sameTop === 1 && pm === levels[0]) return null;
+            return levels[0] + 1;
+        }
+        if (dir === 'bottom') {
+            var sameBot = rows.filter(function(r) { return r.pri === pm; }).length;
+            if (sameBot === 1 && pm === levels[levels.length - 1]) return null;
+            return levels[levels.length - 1] - 1;
+        }
+        return null;
+    }
+    function applyValue(id, val) {
+        document.getElementById('pri-val-' + id).textContent = val;
+        document.getElementById('pri-input-' + id).value = val;
+    }
+    function resortTbody(tbody) {
+        var rows = Array.from(tbody.querySelectorAll('tr'));
+        rows.sort(function(a, b) {
+            var pa = parseInt(a.querySelector('[id^="pri-val-"]').textContent, 10) || 0;
+            var pb = parseInt(b.querySelector('[id^="pri-val-"]').textContent, 10) || 0;
+            if (pb !== pa) return pb - pa;
+            var ida = parseInt(a.id.replace('row-', ''), 10) || 0;
+            var idb = parseInt(b.id.replace('row-', ''), 10) || 0;
+            return ida - idb;
+        });
+        rows.forEach(function(r) { tbody.appendChild(r); });
+    }
+    function flashRow(id, cls) {
+        var row = document.getElementById('row-' + id);
+        if (row) {
+            row.classList.add(cls);
+            setTimeout(function() { row.classList.remove('table-success', 'table-active'); }, 800);
+        }
+    }
+    document.querySelectorAll('.pri-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var id = parseInt(btn.getAttribute('data-id'), 10);
+            var dir = btn.getAttribute('data-dir');
+            var tbody = btn.closest('tbody');
+            var msgEl = document.getElementById('priMsg');
+            var local = shiftLocal(readBucket(tbody), id, dir);
+            if (local === null) {
+                if (msgEl) msgEl.textContent = '已在目标位置，无变化';
+                flashRow(id, 'table-active');
+                return;
+            }
+            applyValue(id, local);
+            resortTbody(tbody);
+            flashRow(id, 'table-success');
+            markDirty();
+            if (msgEl) msgEl.textContent = '已调整为 ' + local + '（待提交刊发）';
+        });
+    });
+    document.querySelectorAll('.tidy-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var region = btn.getAttribute('data-region');
+            var msgEl = document.getElementById('priMsg');
+            var sec = document.getElementById('sec-' + region);
+            var tbody = sec ? sec.querySelector('tbody') : null;
+            if (!tbody) {
+                if (msgEl) msgEl.textContent = '本区域无消息';
+                return;
+            }
+            var rows = readBucket(tbody);
+            if (!rows.length) {
+                if (msgEl) msgEl.textContent = '本区域无消息';
+                return;
+            }
+            var levels = Array.from(new Set(rows.map(function(r) { return r.pri; }))).sort(function(a, b) { return b - a; });
+            if (levels.length <= 1 && levels[0] === 0) {
+                if (msgEl) msgEl.textContent = '已是全 0，无需整理';
+                return;
+            }
+            var remap = {};
+            levels.forEach(function(lv, i) { remap[lv] = levels.length - 1 - i; });
+            rows.forEach(function(r) { applyValue(r.id, remap[r.pri]); });
+            resortTbody(tbody);
+            markDirty();
+            if (msgEl) msgEl.textContent = '已整理为 0..' + (levels.length - 1) + '（待提交刊发）';
+        });
+    });
+    var fetchBtn = document.getElementById('fetchBtn');
+    if (fetchBtn) {
+        fetchBtn.addEventListener('click', function() {
+            var date = document.getElementById('dateInput').value;
+            if (!date) { alert('请选择日期'); return; }
+            fetch('/typst/' + date)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementsByName('content')[0].value = JSON.stringify(data, null, 2);
+                })
+                .catch(err => { console.error(err); alert('Error fetching data.'); });
+        });
+    }
+</script>
+</body>
+</html>

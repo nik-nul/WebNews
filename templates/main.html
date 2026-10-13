@@ -56,6 +56,22 @@
                 <button class="btn btn-outline-secondary" type="submit">上传图片</button>
             </div>
         </form>
+        <form method="GET" action="{{ url_for('main') }}" class="mb-3 d-flex align-items-center gap-2">
+            <label class="form-label mb-0 me-2">按状态过滤：</label>
+            <select name="status" class="form-select" style="max-width: 240px;" onchange="this.form.submit()">
+                <option value="all" {% if status_filter=='all' %}selected{% endif %}>全部未刊发</option>
+                <option value="pending" {% if status_filter=='pending' %}selected{% endif %}>待描述 (pending)</option>
+                <option value="described" {% if status_filter=='described' %}selected{% endif %}>待审核 (described)</option>
+                <option value="modified" {% if status_filter=='modified' %}selected{% endif %}>待审核(已修改) (modified)</option>
+                <option value="approved" {% if status_filter=='approved' %}selected{% endif %}>已完成 (approved)</option>
+                <option value="Approved" {% if status_filter=='Approved' %}selected{% endif %}>已完成 (Approved·DDL)</option>
+                <option value="none" {% if status_filter=='none' %}selected{% endif %}>不筛选</option>
+            </select>
+            {% if status_filter != 'all' %}
+            <a href="{{ url_for('main') }}" class="btn btn-sm btn-outline-secondary">清除过滤</a>
+            {% endif %}
+            <span class="text-muted ms-2">当前显示 {{ entries|length }} 条{% if status_filter!='all' and status_filter!='none' %}（{{ status_filter }}）{% endif %}</span>
+        </form>
         <table class="table table-hover">
             <thead>
                 <tr>
@@ -64,8 +80,9 @@
                     <th>状态</th>
                     <th>描述</th>
                     <th>刊载板块</th>
+                    <th>优先级</th>
                     <th>审阅人</th>
-                    <th>上传时间</th>
+                    <th>上传时间<a href="{{ url_for('main', status=status_filter, order='asc' if order=='desc' else 'desc') }}" class="text-decoration-none ms-1" title="{% if order=='desc' %}切换为顺序（旧在前）{% else %}切换为倒序（新在前）{% endif %}"><span class="{% if order=='asc' %}text-primary{% else %}text-muted{% endif %}" style="font-size: 0.7em;">▲</span><span class="{% if order=='desc' %}text-primary{% else %}text-muted{% endif %}" style="font-size: 0.7em;">▼</span></a></th>
                     <th>上工者</th>
                     <th>锁定者</th>
                 </tr>
@@ -99,7 +116,7 @@
                         {% endif %}
                     </td>
                     <td>
-                        {% if entry[4] %}
+                        {% if entry[10] == '参考消息' %}<span class="badge bg-info">参考消息</span> {% endif %}{% if entry[13] == 1 %}<span class="badge bg-warning">有图</span> {% endif %}{% if entry[4] %}
                         <a target="_blank" rel="noopener noreferrer"
                             href="{% if 'http' in entry[4] %}{{ entry[4] }}{% else %}{{ url_for('static', filename='uploads/' ~ entry[4], _external=True) }}{% endif %}">
                             {% if entry[3]|length > 15 %}
@@ -136,6 +153,7 @@
                         {% endif %}
                     </td>
                     <td>{{ entry[15] or '' }}</td>
+                    <td>{{ entry[18] if entry|length > 18 and entry[18] is not none else 0 }}</td>
                     <td>{{ entry[7] or '' }}</td>
                     <td>{{ entry[2][5:16] if entry[2] else '' }}</td>
                     <td {% if entry[6]==session['username'] %} class="table-success" {% endif %}>{{ entry[6] or '' }}</td>

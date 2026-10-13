@@ -54,7 +54,7 @@
                 {% for entry in entries %}
                 <tr>
                     <td>
-                        <input type="checkbox" name="entry_ids" value="{{ entry[0] }}" form="publishForm">
+                        <input type="checkbox" name="entry_ids" value="{{ entry[0] }}" form="publishForm" style="width: 25px; height: 25px; cursor: pointer;">
                     </td>
                     <td>{{ entry[3] }}</td>
                     <td>{{ entry[14][5:10] if entry[14] else '' }}</td>
@@ -133,6 +133,7 @@
         </div>
         <a href="{{ url_for('main') }}" class="btn btn-secondary">返回主页</a>
         <a href="{{ url_for('user_admin') }}" class="btn btn-info">User Admin</a>
+        <a href="{{ url_for('send_email') }}" class="btn btn-outline-warning">发送邮件</a>
     </div>
 
     <script>
@@ -193,7 +194,7 @@
                 return;
             }
             
-            if (confirm('确定要将选定的条目标记为无效吗？这将设置发布时间为1970-01-01。')) {
+            // if (confirm('确定要将选定的条目标记为无效吗？这将设置发布时间为1970-01-01。')) {
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = '{{ url_for("admin_make_invalid") }}';
@@ -208,7 +209,7 @@
                 
                 document.body.appendChild(form);
                 form.submit();
-            }
+            // }
         }
     </script>
 </body>

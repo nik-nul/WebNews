@@ -46,7 +46,11 @@
             </div>
             <div class="form-group">
                 <label>描述</label>
-                <textarea name="description" class="form-control" required rows="10"></textarea>
+                <textarea name="description" class="form-control" required></textarea>
+            </div>
+            <div class="form-group mt-2">
+                <label>优先级（整数，越大在报纸中越靠上，默认 0，可为负数降权）</label>
+                <input type="number" name="priority" class="form-control" value="0" step="1">
             </div>
             <div class="form-group mt-3">
                 <label>标签 (可选):</label>
@@ -62,6 +66,9 @@
 
                     <input type="radio" class="btn-check" name="tag" id="tagD" value="讲座" autocomplete="off">
                     <label class="btn btn-outline-primary rounded-pill me-1" for="tagD">讲座</label>
+
+                    <input type="radio" class="btn-check" name="tag" id="tagE" value="招聘升学宣讲" autocomplete="off">
+                    <label class="btn btn-outline-primary rounded-pill me-1" for="tagE">招聘升学宣讲</label>
 
                     <input type="radio" class="btn-check" name="tag" id="tagNone" value="" autocomplete="off" checked>
                     <label class="btn btn-outline-secondary rounded-pill" for="tagNone">取消</label>

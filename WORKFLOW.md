@@ -15,7 +15,9 @@ lecture_data, priority`
 - 撰写后：`status='described'`，`publish_date` 保持 NULL。
 - 无效/重复：`status='described'` + `publish_date='1970-01-01 00:00:00'`（此后不再出现在待办和刊发候选中）。
 - `type` 固定 `"活动预告"`；`use_image` 写 0；写库时清掉 `locked_by/lock_time`。
-- `describer` 统一用 `nik_nul`。
+- `describer`：bot 经网站写入时如实记为 `nik_nul_bot`（不要手改；审稿人与撰稿人不同，
+  天然满足“不可通过自己所写的内容”规则）。
+- **入库禁止直写 DB**，一律走 §10-5 的 `web_write.py`（网站 mediated）。SQL 只读不写。
 
 查待办：
 ```sql
@@ -170,17 +172,19 @@ Schema：
 
 - 同一批 pending 内标题明显同一内容：保留**先上传**（id 小），后上传的标重复。
 - 与库中已撰写/已刊发同内容（如同 talk 不同链接：mp vs 学院站）：新来的标重复。
-- 标重复的方法（与历史惯例一致）：
-  `title='【重复】'+原标题, status='described', describer='nik_nul',
-  publish_date='1970-01-01 00:00:00', tag='', description='None'`，
-  short/due 保持原样（一般为 NULL）。
+- 标重复的方法（与历史惯例一致，统一在 §10-5 经网站执行，不要直接 SQL）：
+  准备 `{"id": N, "invalid": true, "title": "【重复】"+原标题}` 文件，
+  `web_write.py` 会先调 `/describe` 改标题/tag/desc，再调 `/admin/publish`
+  把 `publish_date` 置 `1970-01-01 00:00:00`（`tag=''`，`description='None'`，
+  short/due 保持原样，一般为 NULL）。
 - 写完新闻后**不需要刊发**重复条目（publish_date 已置 1970 即排除）。
 
 ## 8. 一链多讲座：拆分为多个 id
 
 若一个链接对应多场讲座（如系列讲座含 10/13、10/14、10/16 三场），不要合并：
-保留原 id 放第一场，**新增行**（同 `link`/`uploader`，新 `upload_time=now`，
-其余按 §1 写库语义）放后续各场，各有独立 title/description/lecture_data/due。
+保留原 id 放第一场，**新增行**放后续各场（`web_write.py` 遇到带 `split_from` 的文件
+会自动调 `/upload` 新建：同 `link`、新 `upload_time=now`，其余字段取文件内容），
+各有独立 title/description/lecture_data/due。
 非讲座同理（如同一推送含上下午两场活动）。
 
 ## 9. 原文抓取
@@ -205,17 +209,26 @@ Schema：
 
 ## 10. 标准执行流程（已验证，可照做）
 
-1. 查 pending（§1 SQL），先读标题做去重（§7），用 SQL 直接标记重复。
+> **铁律：禁止直写 DB。** 所有入库一律经网站 mediated（bot 登录调
+> `/describe`、`/upload`、`/admin/publish`），用 `web_write.py` 执行。
+> SQL 只读不写（查待办、验证计数）。
+
+1. 查 pending（§1 SQL），先读标题做去重（§7），**只记重复清单，不写库**
+   （标重复统一在第 5 步经网站执行）。
 2. 读几个比较新的已撰写报道（`status='described' ORDER BY id DESC`）确认格式，
    把要求整理进 subagent prompt。
 3. 将剩余条目分组（每组 4–7 条），并行开 `subagent(general)` 撰写。
    prompt 必须完备，直接套用以下模板（只把【条目列表】换成 `id | 原标题 | 链接` 行，
-   其余一字不删；纯单类批次可在首段注明 tag 写死什么值）：
+   只把【输出目录】换成 `desc/<日期>/`，其余一字不删；
+   纯单类批次可在首段注明 tag 写死什么值）：
    ```text
    你在 /home/nik_nul/project/news_dev 为南哪小报撰写条目。用 webfetch 读链接全文
    （微信推文信息常在图片里，结合多模态看图提取时间、地点、人物、主办方、报名方式；
-   job.nju.edu.cn 走 §9 的 API 方法，不要只抓页面就判死链），只返回 JSON 数组，
-   不要写库、不要创建文件。
+   job.nju.edu.cn 走 §9 的 API 方法，不要只抓页面就判死链）。
+   每个条目写成一个 JSON 文件到【输出目录】（文件名 `{id}.json`；
+   一链多场的后几场用 `{id}b.json`、`{id}c.json`…，内容里 `"id": null` 并加
+   `"split_from": <原id>`）。写完自己运行 `python3 validate_desc.py --dir 【输出目录】`
+   把 ERROR 清零再返回；只返回一句话汇总（各 id 的 tag/标题/due），不要贴全文。
    【条目列表】
    分类（tag 五选一）：讲座（学术型/分享型报告，含读书会/工作坊/论坛/求职经验分享，
    冲突时优先判讲座）/ 院级活动（仅面向某学院少数人）/ 社团活动（社团主办爱好娱乐）/
@@ -234,29 +247,35 @@ Schema：
    short_title：讲座照抄全标题；非讲座精简反映性质。
    due_time：举办日 yyyy-mm-dd 无时分（年份 2026）；多阶段取首场或报名截止（按性质）。
    priority：讲座 4，其他 0，可为负数降权。
-   一链多场（如系列讲座多场）拆分为多组返回；疑似与已刊发同内容的加 "dup_suspect": true 并说明。
+   一链多场拆分按上文文件规则返回；疑似与已刊发同内容的加 "dup_suspect": true 并说明。
    实在抓不到的返回占位并加 "fetch_failed": true，不要编造时间地点人物。
-   只返回 JSON 数组，每项 {id,title,short_title,description,tag,due_time,priority,lecture_data}，
-   无其他文字。
+   每项键为 {id,title,short_title,description,tag,due_time,priority,lecture_data}，
+   另可带 split_from/dup_suspect/fetch_failed/note。
    ```
-4. 汇总后**人工修正**高频问题再写库：
-   - tag 非法值（如“学术报告”→“讲座”）；
-   - 非讲座带 lecture_data → 置空；
-   - due_time 带时分 → 截断到日期；
-   - 讲座 title.primary 与 title 列不一致 → 对齐；
-   - 讲座标题残留系列/主讲人前缀 → 按 §3 清理；
-   - 非讲座 short 过长 → 按 §6 精简。
-5. 写库（等价于网页 `/describe` POST）：每条
-   `UPDATE entries SET title,short_title,due_time,description,describer='nik_nul',
-   status='described',type='活动预告',use_image=0,tag,lecture_data（讲座为JSON串）,
-   priority,locked_by=NULL,lock_time=NULL WHERE id=?`。
-   新增拆分行用 INSERT 同字段。
-   **技巧**：先把 subagent 结果存成 JSON 文件再用小脚本读入写库，
-   避免在 heredoc 里手写嵌套 dict 时多/少大括号导致 SyntaxError。
+4. 主 agent 通读：跑 `python3 validate_desc.py --dir <输出目录> --summary` 看一览表
+   （不要逐个读文件全文），重点做机器做不了的事：
+   - 跨文件去重（标题相近的即便是不同链接，如 mp vs 学院站同 talk）：命中者在文件里加
+     `"dup_suspect": true` + note，或直接判重复；
+   - 一链多场、一推多活动的拆分是否干净；
+   - 高频问题抽查：tag 非法值、非讲座带 lecture_data、due_time 带时分、
+     title.primary 对齐、标题残留前缀、short 过长；
+   - 把 `dup_suspect` 裁决为重复的，改写成标重复文件 `{"id": N, "invalid": true,
+     "title": "【重复】…原标题…"}`；`fetch_failed` 的重抓或留待办。
+   改完重跑校验，ERROR 必须为 0（WARN 只许剩已裁决的，入库前清掉）。
+5. 入库（经网站，不直写 DB）：
+   ```bash
+   export NEWS_BOT_PASSWORD=...   # nik_nul_bot 的密码
+   python3 web_write.py --dir <输出目录>
+   ```
+   脚本用 bot 登录，普通行调 `/describe/<id>`，`split_from` 行调 `/upload`
+   （自动带 parent 的 link 并取回新 id），`invalid` 行调 `/describe` +
+   `/admin/publish`（publish_date 置 1970）。每行写完都用 `/api/query` 回查，
+   对不上即停。注意：bot 写入的 `describer` 为 `nik_nul_bot`（如实记录；
+   正好与审稿人不同，天然满足不可自审规则）。
 6. 验证：
 ```sql
 SELECT COUNT(*) FROM entries WHERE publish_date IS NULL AND status='pending'; -- 应为 0
--- 讲座 JSON 合法且 primary==title；非讲座 lecture_data 为空；due 无空（重复/无效行除外）
+-- 抽查几行：tag/标题/due 符合预期；讲座抽一条用 gen_lecture_desc.py 重算对比
 ```
 
 ## 11. 常见坑
@@ -264,4 +283,9 @@ SELECT COUNT(*) FROM entries WHERE publish_date IS NULL AND status='pending'; --
 - 微信标题与正文年份不一致时以正文为准（如标题“2026年度”正文“2027年度考录”取后者）。
 - 同系列同时间同地点多链接（如 mp 与学院站同 talk）只留最早 id。
 - `short_title`/`due_time` 为 NULL 的一般是重复/无效行，属正常，不要“修复”它们。
-- 不要创建多余文件；临时 JSON 放 `/tmp/opencode/`，写完可删；不要删库里原有目录。
+- 不要创建多余文件；撰写工作文件放仓库下 `desc/<日期>/`（不在 `/tmp`，重启不丢），
+  全部刊发验证后可删；不要删库里原有目录。
+- 基础设施（仓库根）：`validate_desc.py`（格式审查，subagent 自查＋主 agent 复核）、
+  `gen_lecture_desc.py`（讲座正文 canonical 生成器）、`web_write.py`（bot 经网站入库）、
+  `spa_probe.py`（SPA 渲染找 API）。改了 `main.py` 要重启服务才生效（无 sudo 免密，
+  请用户执行 `restart.sh`）。

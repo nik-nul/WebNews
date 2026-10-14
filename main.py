@@ -351,15 +351,21 @@ def upload():
             priority = int(request.form.get('priority', 0) or 0)
         except (TypeError, ValueError):
             priority = 0
-
+        link = request.form.get('link') or None
+        lecture_data = request.form.get('lecture_data') or None
+        use_image = 1 if request.form.get('use_image') == 'on' else 0
+        
         conn = sqlite3.connect('database.db')
         c = conn.cursor()
-        c.execute("""INSERT INTO entries
-                    (uploader, describer, upload_time, title, short_title, description, due_time, status, type, tag, priority)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                 (session['username'], session['username'], datetime.now(), title, short_title, description, due_time, 'described', entry_type, tag, priority))
+        c.execute("""INSERT INTO entries 
+                    (uploader, describer, upload_time, title, short_title, description, due_time, status, type, tag, priority, link, lecture_data, use_image)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                 (session['username'], session['username'], datetime.now(), title, short_title, description, due_time, 'described', entry_type, tag, priority, link, lecture_data, use_image))
+        new_id = c.lastrowid
         conn.commit()
         conn.close()
+        if request.form.get('format') == 'json':
+            return json.dumps({"ok": True, "id": new_id}, ensure_ascii=False), 200, {'Content-Type': 'application/json; charset=utf-8'}
         return redirect(url_for('main'))
 
     return render_template('upload.html')
@@ -373,7 +379,7 @@ def describe(entry_id):
         title = request.form['title']
         entry_type = request.form['entry_type']
         description = request.form['description']
-        due_time = request.form['due_time']
+        due_time = request.form['due_time'] or None
         use_image = 1 if request.form.get('use_image') == 'on' else 0
         tag = request.form.get('tag')
         short_title = request.form.get('short_title') or title
